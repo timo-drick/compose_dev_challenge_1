@@ -19,38 +19,23 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
-import androidx.compose.runtime.*
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.*
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.*
-import androidx.compose.ui.zIndex
 import com.example.androiddevchallenge.ui.theme.MyTheme
-import kotlin.math.abs
 
 sealed class Screen
 object OverviewScreen : Screen()
 data class DetailScreen(val puppy: Puppy, val imagePosition: Rect) : Screen()
 
 @Composable
-fun <T>SaveableCrossfade(
+fun <T> SaveableCrossfade(
     targetState: T,
     modifier: Modifier = Modifier,
     animationSpec: FiniteAnimationSpec<Float> = tween(),
@@ -78,12 +63,15 @@ class MainActivity : AppCompatActivity() {
             MyTheme {
                 SaveableCrossfade(targetState = screen) { targetScreen ->
                     when (targetScreen) {
-                        is OverviewScreen -> Overview(onSelect = { puppy, imagePosition ->
-                            screen = DetailScreen(puppy, imagePosition)
-                        })
+                        is OverviewScreen -> Overview(
+                            onSelect = { puppy, imagePosition ->
+                                screen = DetailScreen(puppy, imagePosition)
+                            }
+                        )
                         is DetailScreen -> PuppyDetailStatic(
                             params = targetScreen,
-                            onBack = { screen = OverviewScreen })
+                            onBack = { screen = OverviewScreen }
+                        )
                     }
                 }
             }
@@ -99,10 +87,8 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
-
-
 // Start building your app here!
-@OptIn(ExperimentalFoundationApi::class)
+/*@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MyApp() {
     val scrollState = rememberLazyListState()
@@ -194,3 +180,4 @@ fun DarkPreview() {
         Overview(onSelect = { _,_ -> })
     }
 }
+*/
