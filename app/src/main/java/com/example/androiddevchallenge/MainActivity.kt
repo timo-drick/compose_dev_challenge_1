@@ -18,44 +18,179 @@ package com.example.androiddevchallenge
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.*
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.*
+import androidx.compose.ui.zIndex
 import com.example.androiddevchallenge.ui.theme.MyTheme
+import kotlin.math.abs
+
+sealed class Screen
+object OverviewScreen : Screen()
+data class DetailScreen(val puppy: Puppy, val imagePosition: Rect) : Screen()
+
+@Composable
+fun <T>SaveableCrossfade(
+    targetState: T,
+    modifier: Modifier = Modifier,
+    animationSpec: FiniteAnimationSpec<Float> = tween(),
+    content: @Composable (T) -> Unit
+) {
+    val saveableStateHolder = rememberSaveableStateHolder()
+    Crossfade(
+        targetState = targetState,
+        modifier = modifier,
+        animationSpec = animationSpec
+    ) {
+        saveableStateHolder.SaveableStateProvider(it.hashCode()) {
+            content(it)
+        }
+    }
+}
 
 class MainActivity : AppCompatActivity() {
+
+    private var screen by mutableStateOf<Screen>(OverviewScreen)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MyTheme {
-                MyApp()
+                SaveableCrossfade(targetState = screen) { targetScreen ->
+                    when (targetScreen) {
+                        is OverviewScreen -> Overview(onSelect = { puppy, imagePosition ->
+                            screen = DetailScreen(puppy, imagePosition)
+                        })
+                        is DetailScreen -> PuppyDetailStatic(
+                            params = targetScreen,
+                            onBack = { screen = OverviewScreen })
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onBackPressed() {
+        if (screen != OverviewScreen) {
+            screen = OverviewScreen
+        } else {
+            super.onBackPressed()
+        }
+    }
+}
+
+
+
+// Start building your app here!
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun MyApp() {
+    val scrollState = rememberLazyListState()
+    val toolbarHeight = 128.dp
+    val toolbarHeightPx = with(LocalDensity.current) { toolbarHeight.roundToPx().toFloat() }
+    val toolbarOffsetHeightPx = remember { mutableStateOf(0f) }
+    val basColor = MaterialTheme.colors.surface
+    var alpha by remember { mutableStateOf(0f) }
+    val topBarColor = animateColorAsState(targetValue = basColor.copy(alpha = alpha), animationSpec = tween(1000))
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // try to consume before LazyColumn to collapse toolbar if needed, hence pre-scroll
+                val delta = available.y
+                val newOffset = toolbarOffsetHeightPx.value + delta
+                toolbarOffsetHeightPx.value = newOffset.coerceIn(-toolbarHeightPx, 0f)
+                alpha = abs(toolbarOffsetHeightPx.value / toolbarHeightPx)
+                return Offset.Zero
+            }
+        }
+    }
+
+    Surface(color = MaterialTheme.colors.background) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection)) {
+            /*TopAppBar(
+                title = {
+                    Text(
+                        "toolbar alpha: ${topBarColor.alpha}",
+                        color = MaterialTheme.colors.onBackground
+                    )
+                },
+                Modifier.zIndex(10f).align(Alignment.TopStart),
+                backgroundColor = topBarColor
+            )*/
+            val header = "Header"
+            LazyColumn(state = scrollState) {
+                stickyHeader(header) {
+                    Surface(
+                        Modifier
+                            .fillMaxWidth()
+                            .zIndex(10f), color = topBarColor.value) {
+                        Text(
+                            "Test title",
+                            Modifier.padding(8.dp)
+                        )
+                    }
+                }
+                item {
+                    Image(
+                        painter = painterResource(R.drawable.patrick_kool_06efqvjkib8_unsplash),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+
+                        modifier = Modifier
+                            .height(toolbarHeight)
+                        //.offset { IntOffset(x = 0, y = toolbarOffsetHeightPx.value.roundToInt()) }
+                    )
+                }
+                item {
+                    Text("Lorem Ipsum", style = MaterialTheme.typography.h2)
+                }
+                item {
+                    Text(
+                        """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam congue, metus a rutrum auctor, velit lectus sodales justo, nec mollis nisl justo sed metus. Sed sit amet ex nec ex tincidunt semper. Praesent lacinia, erat quis facilisis aliquam, lacus tortor porta tortor, eget accumsan quam nibh a nulla. Sed tristique velit quis quam lacinia faucibus. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Suspendisse potenti. Pellentesque mattis, leo vitae tristique rhoncus, nulla ipsum mattis justo, at interdum est augue sed ante. Aenean quis nulla quis eros tincidunt tempor nec facilisis metus. Fusce lectus risus, euismod ut risus sed, consequat dignissim sem. Curabitur id dapibus diam. Cras maximus elementum lorem sit amet tristique. Phasellus mattis lacinia posuere.
+                        Morbi eleifend scelerisque pharetra. Maecenas in augue ut eros porttitor suscipit. Vestibulum viverra lorem ac risus pretium ultrices. Ut sit amet facilisis augue. Mauris eget diam efficitur velit eleifend aliquet. Etiam ornare nec erat in mattis. Ut eleifend volutpat ipsum, porta venenatis est sollicitudin nec. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam maximus laoreet risus ac tincidunt. Integer sem arcu, blandit sollicitudin iaculis sagittis, vestibulum eu orci. Vivamus condimentum nulla eu dolor sollicitudin mattis. Sed quis molestie nisi, nec eleifend diam. Etiam rhoncus sapien nec metus pharetra fringilla. In imperdiet egestas magna eu ultricies. Suspendisse pretium ornare neque, eu porttitor tellus. Proin ultrices ligula eros, quis fermentum velit pellentesque eget. 
+                     """.trimIndent()
+                    )
+                }
             }
         }
     }
 }
 
-// Start building your app here!
-@Composable
-fun MyApp() {
-    Surface(color = MaterialTheme.colors.background) {
-        Text(text = "Ready... Set... GO!")
-    }
-}
-
-@Preview("Light Theme", widthDp = 360, heightDp = 640)
+/*@Preview("Light Theme", widthDp = 360, heightDp = 640)
 @Composable
 fun LightPreview() {
     MyTheme {
         MyApp()
     }
-}
+}*/
 
 @Preview("Dark Theme", widthDp = 360, heightDp = 640)
 @Composable
 fun DarkPreview() {
     MyTheme(darkTheme = true) {
-        MyApp()
+        Overview(onSelect = { _,_ -> })
     }
 }
