@@ -23,6 +23,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -73,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import com.example.androiddevchallenge.ui.theme.MyTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.max
 
 @Preview
 @Composable
@@ -137,9 +139,9 @@ fun DetailTitle(title: String, modifier: Modifier) {
 @Composable
 fun PuppyDetailStatic(params: DetailScreen, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
-    var uiVisible by remember { mutableStateOf(false) }
+    var uiVisible by remember { mutableStateOf(true) }
     var titleVisibility by remember { mutableStateOf(false) }
-    var characteristicsTitleVisibility by remember { mutableStateOf(false) }
+    var characteristicsVisibility by remember { mutableStateOf(false) }
     val descriptionListState = remember { LazyListState() }
     val initialScrollDP = 50.dp
     val initialScroll = with(LocalDensity.current) { initialScrollDP.toPx() }
@@ -149,25 +151,28 @@ fun PuppyDetailStatic(params: DetailScreen, onBack: () -> Unit) {
     var positioned by remember { mutableStateOf(false) }
     val density = LocalDensity.current
 
+    val scrollPadding = with(LocalDensity.current) {
+        max(0f, (descriptionListState.firstVisibleItemScrollOffset.toFloat() - initialScroll) / 1.5f).toDp()
+    }
+    val scrollVisibility = scrollPadding < 8.dp
+    val cornerSize = 16.dp
     fun toggelUI() {
         scope.launch {
             uiVisible = uiVisible.not()
             if (uiVisible) {
-                titleVisibility = true
-                delay(300)
-                characteristicsTitleVisibility = true
-                delay(300)
                 descriptionListState.animateScrollBy(initialScroll)
             } else {
-                titleVisibility = false
-                characteristicsTitleVisibility = false
                 descriptionListState.animateScrollToItem(0, 0)
             }
         }
     }
     LaunchedEffect(key1 = params) {
         delay(500)
-        toggelUI()
+        titleVisibility = true
+        delay(300)
+        characteristicsVisibility = true
+        delay(300)
+        descriptionListState.animateScrollBy(initialScroll)
     }
     Box(
         Modifier.fillMaxWidth().clickable { toggelUI() }
@@ -207,17 +212,18 @@ fun PuppyDetailStatic(params: DetailScreen, onBack: () -> Unit) {
             modifier = Modifier
                 .absoluteOffset(imageOffset.value.x, imageOffset.value.y)
                 .size(imageSize.value.width.dp, imageSize.value.height.dp)
+                .padding(bottom = scrollPadding)
         )
         Column {
-            AnimatedVisibility(visible = titleVisibility) {
+            AnimatedVisibility(visible = titleVisibility && uiVisible) {
                 DetailTitle(params.puppy.dogName, Modifier.fillMaxWidth())
             }
             BoxWithConstraints(Modifier.weight(1f)) {
-                val cornerSize = 8.dp
                 androidx.compose.animation.AnimatedVisibility(
                     modifier = Modifier.align(Alignment.BottomEnd),
-                    visible = characteristicsTitleVisibility,
-                    enter = expandHorizontally()
+                    visible = characteristicsVisibility && scrollVisibility && uiVisible,
+                    enter = expandHorizontally(),
+                    exit = shrinkHorizontally()
                 ) {
                     Surface(
                         modifier = Modifier
@@ -253,12 +259,12 @@ fun PuppyDetailStatic(params: DetailScreen, onBack: () -> Unit) {
                 ) {
                     item {
                         Surface(
-                            Modifier.padding(8.dp).clickable {
+                            Modifier.padding(vertical = 8.dp).clickable {
                                 scope.launch {
                                     descriptionListState.animateScrollToItem(0, constraints.maxHeight)
                                 }
                             },
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(cornerSize)
                         ) {
                             Text(params.puppy.race.description, Modifier.padding(8.dp))
                         }
