@@ -1,4 +1,4 @@
-# Put title of your app here
+# Puppy Adoption Animation POC
 
 ![Workflow result](https://github.com/timo-drick/compose_dev_challenge_1/workflows/Check/badge.svg)
 
